@@ -1,3 +1,11 @@
+/*
+Para rodar no windows:
+1. Retirar linha termios.h na linha 120 por windows.h
+2. Remover função kbhit()
+3. Adicionar <conio.h>
+4. Trocar kbhit() por _kbhit na linha 336
+*/
+
 // gcc simple_simulator_Template.c -O3 -march=native -o simulador -Wall -lm
 // -lm is option to execute math.h library file.
 /*
@@ -117,7 +125,8 @@ Do todos os comandos...
 #include <math.h>
 
 // kbhit() TODO: deletar
-#include <termios.h>
+#include <windows.h>
+#include <conio.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -148,6 +157,7 @@ unsigned int _rotr(const unsigned int value, int shift);
 // ULA
 ResultadoUla ULA(unsigned int x, unsigned int y, unsigned int OP, int carry);
 
+/*
 int kbhit(void)
 {
   struct termios oldt, newt;
@@ -174,6 +184,7 @@ int kbhit(void)
  
   return 0;
 }
+*/
 
 int FR[16] = {0};  // Flag Register: <...|Negativo|StackUnderflow|StackOverflow|DivByZero|ArithmeticOverflow|carry|zero|equal|lesser|greater>
 
@@ -321,7 +332,7 @@ loop:
 					//timeout(99999);
 					//if(TECLADO == ERR)
 					//	TECLADO = 255;
-					if(kbhit())
+					if(_kbhit())
 						TECLADO = getchar();
 					else
 						TECLADO = 255;
@@ -355,7 +366,10 @@ loop:
 				case LOAD:
 					// MAR = MEMORY[PC];
 					// PC++;
-
+					selM1 = sPC;
+					RW = 0;
+					LoadMAR = 1;
+					IncPC = 1;
 					// -----------------------------
 					state=STATE_EXECUTE;
 					break;
@@ -363,27 +377,40 @@ loop:
 				case STORE:
 					//MAR = MEMORY[PC];
 					//PC++;
-					
+					selM1 = sPC;
+					RW = 0;
+					LoadMAR = 1;
+					IncPC = 1;
 					// -----------------------------
 					state=STATE_EXECUTE;
 					break;
 
 				case LOADI:
 					// reg[rx] = MEMORY[reg[ry]];
-					
+					selM4 = ry;
+					selM1 = sM4;
+					RW = 0;
+					selM2 = sDATA_OUT;
+					LoadReg[rx] = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
 				case STOREI:
 					//mem[reg[rx]] = reg[ry];
-					
+					selM3 = ry;
+					selM5 = sM3;
+					selM4 = rx;
+					selM1 = sM4;
+					RW = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
 				case MOV:
-					
+					selM4 = ry;
+					selM2 = sM4;
+					LoadReg[rx] = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
@@ -398,21 +425,47 @@ loop:
 				case LXOR:
 				case LNOT:
 					// reg[rx] = reg[ry] + reg[rz]; // Soma ou outra operacao
-					
+					selM3 = ry;
+					selM4 = rz;
+					OP = pega_pedaco(IR, 15, 10);
+					carry = pega_pedaco(IR, 0, 0);
+					selM2 = sULA;
+					LoadReg[rx] = 1;
+					selM6 = sULA;
+					LoadFR = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
 				case INC:
 					//reg[rx]++;                                  // Inc Rx ou DEC
-					
+					selM3 = rx;
+					selM4 = 8;
+
+					if (pega_pedaco(IR, 6, 6) == 0)
+						OP = ADD;
+					else
+						OP = SUB;
+
+					carry = 0;
+					selM2 = sULA;
+					LoadReg[rx] = 1;
+
+					selM6 = sULA;
+					LoadFR = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
 				case CMP:   // seta 3 flags: maior, menor ou igual
 					//if(rx == ry)
-					
+					selM3 = rx;
+					selM4 = ry;
+					OP = CMP;
+					carry = 0; 
+
+					selM6 = sULA;
+					LoadFR = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
@@ -470,27 +523,59 @@ loop:
 					break;
 
 				case CALL:
+					COND = pega_pedaco(IR,9,6);
+
+					if((COND == 0)                       	                      // NO COND
+							|| (FR[0]==1 && (COND==7))                            // GREATER
+							|| ((FR[2]==1 || FR[0]==1) && (COND==9))              // GREATER EQUAL
+							|| (FR[1]==1 && (COND==8))                            // LESSER
+							|| ((FR[2]==1 || FR[1]==1) && (COND==10))             // LESSER EQUAL
+							|| (FR[2]==1 && (COND==1))                            // EQUAL
+							|| (FR[2]==0 && (COND==2))                            // NOT EQUAL
+							|| (FR[3]==1 && (COND==3))                            // ZERO
+							|| (FR[3]==0 && (COND==4))                            // NOT ZERO
+							|| (FR[4]==1 && (COND==5))                            // CARRY
+							|| (FR[4]==0 && (COND==6))                            // NOT CARRY
+							|| (FR[5]==1 && (COND==11))                           // OVERFLOW
+							|| (FR[5]==0 && (COND==12))                           // NOT OVERFLOW
+							|| (FR[6]==1 && (COND==14))                           // NEGATIVO
+							|| (FR[9]==1 && (COND==13)))                          // DIVBYZERO
+					{
+						selM1 = sSP;
+						RW = 1;
+						selM5 = sPC;
+						DecSP = 1;
+						state = STATE_EXECUTE;
+					}
+					else
+					{
+						IncPC = 1;
+						state=STATE_FETCH;
+					}
 					
-					state=STATE_FETCH;
 					// -----------------------------
 					break;
 
 				case PUSH:
-					
+					selM1 = sSP;
+					RW = 1;
+					selM3 = rx;
+					selM5 = sM3;
+					DecSP = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
 				case POP:
 					//SP++;
-					
+					IncSP = 1;
 					// -----------------------------
 					state=STATE_EXECUTE;
 					break;
 
 				case RTS:
 					// SP++;
-					
+					IncSP = 1;
 					// -----------------------------
 					state=STATE_EXECUTE;
 					break;
@@ -531,56 +616,69 @@ loop:
 			switch(opcode){
 				case LOAD:
 					//reg[rx] = MEMORY[MAR];
-
+					selM1 = sMAR;
+					RW = 0;
+					selM2 = sDATA_OUT;
+					LoadReg[rx] = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
 				case STORE:
 					//MEMORY[MAR] = reg[rx];
-
+					selM1 = sMAR;
+					RW = 1;
+					selM3 = rx;
+					selM5 = sM3;
 					// -----------------------------
 					state=STATE_FETCH;
 					break; 
 
 				case CALL:
-
+					selM1 = sPC;
+					RW = 0;
+					LoadPC = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break; 
 
 				case POP:
-					
+					selM1 = sSP;
+					RW = 0;
+					selM2 = sDATA_OUT;
+					LoadReg[rx] = 1;
 					// -----------------------------
 					state=STATE_FETCH;
 					break; 
 
 				case RTS:
 					//PC = MEMORY[SP];
-					
+					selM1 = sSP;
+					RW = 0;
+					LoadPC = 1;
 					// -----------------------------
 					state=STATE_EXECUTE2;
 					break;
 
 				case PUSH:
-					
 					// -----------------------------
 					state=STATE_FETCH;
 					break;
 
-
 			}
-
-			//state=STATE_EXECUTE2;
 			break;
 
 		case STATE_EXECUTE2:
 
-			//case RTS:
-			//PC++;
-			
-			// -----------------------------
-			state=STATE_FETCH;
+			switch (opcode)
+			{
+			case RTS:
+				//PC++;
+				IncPC = 1;
+				// -----------------------------
+				state=STATE_FETCH;
+				break;
+			}
 			break;
 
 		case STATE_HALTED:
