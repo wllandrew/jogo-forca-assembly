@@ -1,500 +1,885 @@
 jmp main
 
-; ---------------------------------
-; Variaveis                       |
-; ---------------------------------
+; Variáveis 
 
-SCREEN_SIZE: var #1200
-SPACE: var #8
+; Endereço das palavras e palavras 
+palavra0: string "oi"
+palavra1: string "pisca"
+palavra2: string "sucesso"
+palavra3: string "banana"
+palavra4: string "livro"
+palavra5: string "verdade"
+palavra6: string "falso"
+palavra7: string "estudo"
+palavra8: string "testar"
 
-CINZA: var #30720
+; Banco de palavras 
+palavras: var #9
+    static palavras + #0, #palavra0
+    static palavras + #1, #palavra1
+    static palavras + #2, #palavra2
+    static palavras + #3, #palavra3
+    static palavras + #4, #palavra4
+    static palavras + #5, #palavra5
+    static palavras + #6, #palavra6
+    static palavras + #7, #palavra7
+    static palavras + #8, #palavra8
+  
+; Palavra digitada
+Resultado: var #7
+    static Resultado + #0, #0
+    static Resultado + #1, #0
+    static Resultado + #2, #0
+    static Resultado + #3, #0
+    static Resultado + #4, #0
+    static Resultado + #5, #0
+    static Resultado + #6, #0
 
-;----------------------------------
-; Inicio                          |
-;----------------------------------
+; Letras testadas para imprimir na tela
+Digitada: var #26
+    static Digitada + #0, #0
+    static Digitada + #1, #0
+    static Digitada + #2, #0
+    static Digitada + #3, #0
+    static Digitada + #4, #0
+    static Digitada + #5, #0
+    static Digitada + #6, #0
+    static Digitada + #7, #0
+    static Digitada + #8, #0
+    static Digitada + #9, #0
+    static Digitada + #10, #0
+    static Digitada + #11, #0
+    static Digitada + #12, #0
+    static Digitada + #13, #0
+    static Digitada + #14, #0
+    static Digitada + #15, #0
+    static Digitada + #16, #0
+    static Digitada + #17, #0
+    static Digitada + #18, #0
+    static Digitada + #19, #0
+    static Digitada + #20, #0
+    static Digitada + #21, #0
+    static Digitada + #22, #0
+    static Digitada + #23, #0    
+    static Digitada + #24, #0    
+    static Digitada + #25, #0
+        
+pontdigitada: var #1
 
-palavra0: string "BANANA   "
-palavra1: string "CARRO    "
-palavra2: string "PORTA    "
-palavra3: string "IGREJA   "
-palavra4: string "INVERNO  "
-palavra5: string "MAR      "
-palavra6: string "CODIGO   "
-palavra7: string "CERVEJA  "
-palavra8: string "BRASIL   "
-palavra9: string "CAFE     "
+; FlagIguais
+FlagIguais: var #7
+    static FlagIguais + #0, #0
+    static FlagIguais + #1, #0
+    static FlagIguais + #2, #0
+    static FlagIguais + #3, #0
+    static FlagIguais + #4, #0
+    static FlagIguais + #5, #0
+    static FlagIguais + #6, #0
 
+restart: var #1
+
+perdeu: var #1
+
+tamanhopalavra: var #1
 
 main:
+    loadn r1, #tela_l00     ;Endereco onde comeca a primeira linha do cenario
+    loadn r2, #30720       ;cor cinza
+    call ImprimeTela
 
-        call limpa_tela
-        call inicia_jogo
-        call jogo_loop
-        call limpa_tela
+    loadn r2, #0                ;inicializa o contador com 0 
 
-;----------------------------------
-; Funcoes                         |
-;----------------------------------
-
-;GERAL
-
-limpa_tela:
-        push R1
-        push R2
+    Loopmenu:
+        inchar r4
+        loadn r1, #13           ;tecla enter
         
-        loadn   R1, #0
-        loadn   R2, #SCREEN_SIZE
-        limpa_tela_loop:
-                cmp     R1, R2
-                jeg     limpa_tela_final
-                loadn   R0, #SPACE
-                outchar R0, R1
-                inc     R1
-                jmp     limpa_tela_loop
-        limpa_tela_final:
-                pop R2
-                pop R1
-                rts
+        inc r2                  ;faz a soma aleatória para dar o rand
+
+        cmp r4, r1
+        jne Loopmenu
+
+        loadn r5, #9           ;limita o valor para ficar entre 0 e 8
+        mod r3, r2, r5
+
+        loadn r0, #palavras
+        add r0, r0, r3
+        loadi r1, r0        ; pega endereço da palavra
+        
+        store restart, r1 ; tive que criar essa variável para fazer o restart funcionar e não alterar a lógica do código
+        
+    Restart:
+        call ApagaTela 
+        
+        call Tamanho 
+         
+        call Zera
+        
+        call ImprimeTraco
+
+        load r7, restart ; guarda em r7 o endereço da palavra-alvo (NÃO USAR O R7)
+        
+        Loopmain:
+            call DesenhaBoneco
+            
+            call Jogo
+            
+            ; Imprime o Resultado
+
+            loadn r1, #Resultado
+            loadn r0, #406     
+            loadn r2, #0         ; cor
+
+            call ImprimeResultado
+            
+            ; Imprime as letras digitas
+            
+            loadn r1, #Digitada
+            loadn r0, #104    
+            loadn r2, #256         ; cor
+
+            call ImprimeStr            
+            
+            call Ganha ; função para ver se a pessoa ganhou o jogo 
+            
+            jmp Loopmain
+            
+;--------------------------------------------
+;                 Zera
+;--------------------------------------------
+Zera:
+    push r0
+    push r1
+    push r2
+    push r3
+        loadn r0, #0
+        
+        ; Zerar os ponteiro e perdeu
+        store pontdigitada, r0
+        store perdeu, r0
+        
+        ; Zerar Resultado
+        loadn r1, #7 ; critério de parada
+        loadn r2, #0 ; contador
+        
+        loopR:
+            loadn r3, #Resultado
+            add r3, r3, r2 ; endereço Resultado[r2]
+            storei r3, r0
+            
+            inc r2            
+            cmp r2, r1
+            jne loopR
+            
+            
+        ; Zerar Digitada
+        loadn r1, #26 ; critério de parada
+        loadn r2, #0 ; contador
+        
+        loopD:
+            loadn r3, #Digitada
+            add r3, r3, r2
+            storei r3, r0
+            
+            inc r2            
+            cmp r2, r1
+            jne loopD
+            
+        ; Zerar Flags
+        loadn r1, #7 ; critério de parada
+        loadn r2, #0 ; contador
+        
+        loopF:
+            loadn r3, #FlagIguais
+            add r3, r3, r2
+            storei r3, r0
+            
+            inc r2            
+            cmp r2, r1
+            jne loopF
+       
+    pop r3
+    pop r2
+    pop r1
+    pop r0
+    rts
+          
+;--------------------------------------------
+;                 Tamanho
+;-------------------------------------------- 
+; Tamanho da palavra
+Tamanho: 
+    push r0
+    push r1
+    push r2
+    push r3
+    push r4
+    
+    ; Precisa saber do tamanho da palavra ainda
+    load r0, restart ; tem o endereço da primeira letra da palavra-alvo
+    loadn r4, #0 ; vai servir para ser um contador 
+    loadn r2, #'\0' ; critério de parada
+        
+    LoopTamanho:
+        loadi r1, r0
+
+        cmp r1, r2
+        jeq RtsTamanho
+
+        inc r4
+        inc r0
+
+        jmp LoopTamanho
+    
+    RtsTamanho:
+        store tamanhopalavra, r4
+        
+        pop r4
+        pop r3
+        pop r2
+        pop r1
+        pop r0
+        rts
+
+        
+;--------------------------------------------
+;                  JOGO
+;--------------------------------------------
+Jogo:
+    push r0
+    push r1
+    push r2
+
+        LoopJogo:
+            ; r0 == letra que a pessoa digitar
+            inchar r0 ; esperar a pessoa digitar
+            
+            loadn r1, #65
+            cmp r0, r1
+            jle nao_maiuscula
+            possivel_maiscula:
+                loadn r1, #90
+                cmp r0, r1
+                jgr nao_maiuscula
+                loadn r1, #32
+                add r0, r0, r1
                 
-time_sleep:
-        push R0
-        push R1
+            nao_maiuscula:
+            loadn r1, #255 ; A pessoa não escreveu nada
+            cmp r1, r0
+            jeq LoopJogo
         
-        loadn R0, #1000
-        loadn R1, #0 
-        time_sleep_loop:
-                cmp R1, R0
-                jeq time_sleep_end
-                dec R0
-                jmp time_sleep_loop
-        time_sleep_end:
-                pop R1
-                pop R0
+        ;r0 tem a letra digitada da pessoa 
+        loadn r1, #Digitada
+        load r2, pontdigitada
+        add r1, r1, r2 ; fica Digitada[pontdigitada]
+        storei r1, r0 
+        
+        ; Atualiza o ponteiro
+        inc r2
+        store pontdigitada, r2
+        
+        call Compara
+
+    pop r2
+    pop r1
+    pop r0
+    rts
+
+;--------------------------------------------
+;                Compara
+;--------------------------------------------
+Compara:
+    ; r0 tem a letra digitada
+    ; r7 tem o endereço 0 da nossa palavra-alvo
+    push r1
+    push r2
+    push r3
+    push r4
+    push r5
+
+    loadn r3, #0 ; contador
+            
+    LoopCompara:
+        mov r2, r7 ; r2 tem o endereço da primeira letra da palavra-alvo para a gente poder ir mudando
+        add r2, r2, r3 ; atualiza o endereço
+
+        loadi r1, r2   ; r1 tem a primeira letra da palavra-alvo
+        cmp r1, r0 ; se a letra digitada for uma das letras da palavra-alvo, então
+        jeq Continua 
+        
+        inc r3 ; atualiza o ponteiro
+
+        load r5, tamanhopalavra ; critério de parada para o loop
+        cmp r3, r5
+        jne LoopCompara
+
+    ; Percorreu a palavra inteira e não achou nada
+    ; Só dar o inc no valor do perdeu
+    load r4, perdeu
+    inc r4
+    store perdeu, r4
+    
+    jmp RtsCompara
+
+    Continua:
+        ; r3 tem a posição da letra igual
+        loadn r5, #Resultado ; endereço do vetor Resultado
+        add r5, r3, r5 ; endereço das Resultado[posição da letra igual]
+
+        storei r5, r0 ; guarda a letra no Resultado[posição da letra igual]
+        
+        loadn r5, #1
+        loadn r4, #FlagIguais
+        add r4, r3, r4 ; endereço FlagIguais[posição da letra igual]
+        storei r4, r5 ; Liga a flag
+        
+        LoopContinua: ; Termina de percorrer a palavra para deixar repetir as letras
+            inc r3 ; atualiza o ponteiro
+            mov r2, r7 ; r2 tem o endereço da primeira letra da palavra-alvo para a gente poder ir mudando
+            add r2, r2, r3 ; atualiza o endereço
+
+            loadi r1, r2   ; r1 tem a primeira letra da
+            cmp r1, r0 ; se a letra digitada for uma das letras da palavra-alvo, então
+            jeq Continua 
+
+            load r5, tamanhopalavra ; critério de parada para o loop
+            cmp r3, r5
+            jne LoopContinua
+            
+
+    RtsCompara:               
+        pop r5
+        pop r4
+        pop r3
+        pop r2
+        pop r1
+
+        rts
+
+;--------------------------------------------
+;                 Ganha
+;-------------------------------------------- 
+Ganha:
+    push r0
+    push r1
+    push r2
+    push r3
+    push r4
+        
+        loadn r0, #FlagIguais
+        loadn r1, #0 ; Verifica se a flag está ligada
+        loadn r3, #0 ; contador
+        load r4, tamanhopalavra ; tamanho da string
+        
+        LoopGanha:
+            loadi r2, r0
+            
+            cmp r2, r1
+            jeq RtsGanha
+            
+            inc r0
+            inc r3
+            
+            cmp r3, r4
+            jne LoopGanha
+            
+            call Ganhou
+    
+    RtsGanha:
+        pop r4    
+        pop r3
+        pop r2
+        pop r1
+        pop r0
+        rts
+        
+;--------------------------------------------
+;                 GANHOU
+;--------------------------------------------
+Ganhou:
+    push r0
+    push r1
+    push r2
+    
+        call ApagaTela
+        
+        loadn r1, #tela5Linha0      ;Endereco onde comeca a primeira linha do cenario
+        loadn r2, #30720       ;cor cinza
+        call ImprimeTela
+        
+    loadn r2, #0                    ;inicializa o contador com 0 
+
+    loadn r0, #'s'
+    loadn r3, #'n'
+
+    LoopGanhou:
+        inchar r1                   ;lê o que a pessoa escreveu
+    
+        inc r2                      ;contador++
+    
+        cmp r1, r3                  ;se ele digitou 'n'
+        jeq Fim
+
+        cmp r1, r0                  ;se ele digitou 's'
+        jeq SimG
+
+        jmp LoopGanhou             ;se ele não digitou/digitou outra coisa
+
+    SimG:
+        loadn r5, #3               ;tamanho do banco de palavrass
+        mod r3, r2, r5              ;deixo o valor entre 0 e 1
+
+        loadn r0, #palavras     ; endereço do banco de palavras
+        add r0, r3, r0          ; endereço palavras[r3]
+        loadi r1, r0            ; AQUI tem o endereço da palavra-alvo que estava no palavras[r3]
+        
+        store restart, r1       ; guardei o valor do endereço da palavra-alvo na variável restart
+
+        pop r3
+        pop r2
+        pop r1
+        pop r0
+        
+        pop r0                      ; mais um r0 para desimpilhar tudo para ir direto na main 
+
+        jmp Restart
+
+    
+    pop r2
+    pop r1
+    pop r0
+    rts
+    
+;--------------------------------------------
+;               FRACASSOU
+;--------------------------------------------
+Fracassou:
+    call ApagaTela
+        
+    loadn r1, #telaFinalPLinha0      ;Endereco onde começa a primeira linha do cenario
+    loadn r2, #30720       ;cor cinza
+    call ImprimeTela
+        
+    loadn r2, #0                    ;inicializa o contador com 0 
+
+    loadn r0, #'s'
+    loadn r3, #'n'
+
+    LoopFracassou:
+        inchar r1                   ;lê o que a pessoa escreveu
+    
+        inc r2                      ;contador++
+    
+        cmp r1, r3                  ;se ele digitou 'n'
+        jeq Fim
+
+        cmp r1, r0                  ;se ele digitou 's'
+        jeq SimF
+
+        jmp LoopFracassou             ;se ele não digitou/digitou outra coisa
+
+    SimF:
+        loadn r5, #3               ;tamanho do banco de palavrass
+        mod r3, r2, r5              ;deixo o valor entre 0 e 1
+
+        loadn r0, #palavras     ; endereço do banco de palavras
+        add r0, r3, r0          ; endereço palavras[r3]
+        loadi r1, r0            ; AQUI tem o endereço da palavra-alvo que estava no palavras[r3]
+        
+        store restart, r1       ; guardei o valor do endereço da palavra-alvo na variável restart
+
+        pop r3
+        pop r2
+        pop r1
+        pop r0
+        
+        pop r0                      ; mais um r0 para desimpilhar tudo para ir direto na main 
+
+        jmp Restart
+
+;--------------------------------------------
+;            Desenha Boneco
+;--------------------------------------------
+DesenhaBoneco:
+    push r0
+    push r1
+    push r2
+    push r3
+    push r4
+    
+    load r0, perdeu ; Quantas partes do boneco tem que desenhar
+    
+    loadn r1, #0 
+    cmp r1, r0
+    jeq RtsDesenhaBoneco
+    
+    ; Para desenhar o boneco, tem que estar entre 1 a 7, se perdeu for 7, então desenha tudo e perde
+    ; Tem que desenhar a cabeça
+    loadn r2, #'O' ; Caractere da cabeça
+    loadn r3, #50  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #1
+    cmp r0, r1
+    jeq RtsDesenhaBoneco
+    
+    ; Tem que desenhar o tronco 1
+    loadn r2, #'|' 
+    loadn r3, #90  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #2
+    cmp r0, r1
+    jeq RtsDesenhaBoneco
+    
+    ; Tem que desenhar o braço esquerdo
+    loadn r2, #'/' 
+    loadn r3, #89  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #3
+    cmp r0, r1
+    jeq RtsDesenhaBoneco
+    
+    ; Tem que desenhar o braço direito
+    loadn r2, #'>' 
+    loadn r3, #91  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #4
+    cmp r0, r1
+    jeq RtsDesenhaBoneco
+    
+    ; Tem que desenhar o tronco 2
+    loadn r2, #'|' 
+    loadn r3, #130  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #5
+    cmp r0, r1
+    jeq RtsDesenhaBoneco
+    
+    ; Tem que desenhar o braço esquerdo
+    loadn r2, #'/' 
+    loadn r3, #169  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #6
+    cmp r0, r1
+    jeq RtsDesenhaBoneco
+    
+    ; Tem que desenhar o braço direito
+    loadn r2, #'L' 
+    loadn r3, #170  ; Posição na tela
+    outchar r2, r3
+    
+    loadn r1, #7
+    cmp r0, r1
+    ceq Fracassou
+    
+    RtsDesenhaBoneco:
+        pop r4
+        pop r3
+        pop r2
+        pop r1
+        pop r0
+        
+        rts
+
+;--------------------------------------------
+;                 FIM
+;--------------------------------------------
+Fim:
+    ; seria legal uma tela para finalizar o jogo
+    halt
+
+;--------------------------------------------
+;              Imprime Traço
+;--------------------------------------------
+ImprimeTraco:
+    push r0
+    push r1
+    push r2
+    push r3
+    
+    loadn r0, #446
+    
+    loadn r1, #'_'
+    
+    load r2, tamanhopalavra ; Critério de parada
+    
+    loadn r3, #0 ; funciona como um contador
+    
+    LoopT:
+        outchar r1, r0
+        
+        inc r0
+        inc r3
+        
+        cmp r3, r2 ; compara se chegou no tamanho da palavra
+        jne LoopT
+        
+    RtsImprimeTraco:
+        pop r3
+        pop r2
+        pop r1
+        pop r0
+        rts   
+;--------------------------------------------
+;            Imprime Resultado
+;-------------------------------------------- 
+ImprimeResultado:
+    ;r0 = Posicao da tela que o primeiro caractere da mensagem será impresso 
+    ;r1 = endereco onde comeca a mensagem
+    ;r2 = cor da mensagem
+
+    push r0 
+    push r1 
+    push r2 
+    push r3 
+    push r4
+    push r5
+    
+    load r3, tamanhopalavra ; Criterio de parada
+    loadn r5, #0
+    
+
+   LoopImprimeR: 
+        loadi r4, r1
+        
+        cmp r5, r3      ; Se imprimiu tudo, sai
+        jeq RtsImprimeResultado
+        
+        add r4, r2, r4  ; Soma a Cor
+        outchar r4, r0  ; Imprime o caractere na tela
+        inc r0          ; Incrementa a posicao na tela
+        inc r1          ; Incrementa o ponteiro da String
+        inc r5
+        jmp LoopImprimeR
+    
+   RtsImprimeResultado: 
+    pop r5 
+    pop r4  
+    pop r3
+    pop r2
+    pop r1
+    pop r0
+    rts
+    
+;--------------------------------------------
+;             Imprime Tela
+;--------------------------------------------
+ImprimeTela:
+    ;r1 = endereco onde comeca a primeira linha do Cenario
+    ;r2 = cor do Cenario para ser impresso
+
+    push r0 
+    push r1 
+    push r2 
+    push r3 
+    push r4
+    push r5
+
+    loadn R0, #0    ; posicao inicial tem que ser o comeco da tela!
+    loadn R3, #40   ; Incremento da posicao da tela!
+    loadn R4, #41   ; incremento do ponteiro das linhas da tela
+    loadn R5, #1200 ; Limite da tela!
+    
+   ImprimeTela_Loop:
+        call ImprimeStr
+        add r0, r0, r3      ; incrementaposicao para a segunda linha na tela -->  r0 = R0 + 40
+        add r1, r1, r4      ; incrementa o ponteiro para o comeco da proxima linha na memoria (40 + 1 porcausa do /0 !!) --> r1 = r1 + 41
+        cmp r0, r5          ; Compara r0 com 1200
+        jne ImprimeTela_Loop    ; Enquanto r0 < 1200
+
+    pop r5  
+    pop r4
+    pop r3
+    pop r2
+    pop r1
+    pop r0
+    rts
                 
-                inc R7
-                rts
-        
+;--------------------------------------------
+;             Imprime String 
+;--------------------------------------------
+ImprimeStr:  
+    ;r0 = Posicao da tela que o primeiro caractere da mensagem será impresso 
+    ;r1 = endereco onde comeca a mensagem
+    ;r2 = cor da mensagem
 
-; INICIALIZACAO
+    push r0 
+    push r1 
+    push r2 
+    push r3 
+    push r4
+    
+    loadn r3, #'\0' ; Criterio de parada
 
-inicia_jogo:
-        push R0
-        loadn R0, #telainicial0
-        loadn R1, #0
-        call printa_tela
-        
-        inicia_jogo_loop:
-                inchar R4
-                loadn R5, #SPACE
-                cmp R4, R5
-                call time_sleep
-                jeq inicia_jogo_fim
-                jmp inicia_jogo_loop
-        inicia_jogo_fim:
-                call limpa_tela
-                pop R0
-                rts
-                
-        
-printa_tela:
-        ;R0 = Endereco inicial da string
-        ;R1 = Cor da impressao
+   ImprimeStr_Loop: 
+        loadi r4, r1
+        cmp r4, r3      ; If (Char == \0)  vai Embora
+        jeq ImprimeStr_Sai
+        add r4, r2, r4  ; Soma a Cor
+        outchar r4, r0  ; Imprime o caractere na tela
+        inc r0          ; Incrementa a posicao na tela
+        inc r1          ; Incrementa o ponteiro da String
+        jmp ImprimeStr_Loop
+    
+   ImprimeStr_Sai:  
+    pop r4  
+    pop r3
+    pop r2
+    pop r1
+    pop r0
+    rts
+    
 
-        push R2
-        push R3
-        push R4
-        push R5
-        
-        loadn R2, #0
-        loadn R3, #1200
-        loadn R4, #41
-        loadn R5, #40 
-        
-        printa_tela_loop:
-                call print_string
-                add R0, R0, R4
-                add R2, R2, R5
-                cmp R2, R3
-                jeq printa_tela_fim
-                jmp printa_tela_loop
-        printa_tela_fim:
-                pop R5
-                pop R4
-                pop R3
-                pop R2
-                rts
-        
+;--------------------------------------------
+;                 Apaga Tela
+;--------------------------------------------
+ApagaTela:
+    push r0
+    push r1
+    
+    loadn r0, #1200     ; apaga as 1200 posicoes da Tela
+    loadn r1, #' '      ; com "espaco"
+    
+       ApagaTela_Loop:  ;;label for(r0=1200;r3>0;r3--)
+        dec r0
+        outchar r1, r0
+        jnz ApagaTela_Loop
+ 
+    pop r1
+    pop r0
+    rts 
 
-print_string:
-        ; R0 = Endereco inicial da string
-        ; R1 = Cor
-        ; R2 = Inicio da linha
-        
-        push R3
-        push R4
-        
-        loadn R3, #'\0'
-        
-        printa_string_loop:
-                loadi R4, R0
-                cmp R4, R3
-                jeq printa_string_fim
-                
-                add R4, R1, R4
-                outchar R4, R2
-                inc R2
-                inc R0
-                jmp printa_tela_loop
-        printa_string_fim:
-                pop R4
-                pop R3
-                rts
+;--------------------------------------------
+;                   Telas
+;--------------------------------------------  
+; Menu
+tela4Linha0 : string "                                        "
+tela4Linha1 : string "                                        "
+tela4Linha2 : string "                                        "
+tela4Linha3 : string "                                        "
+tela4Linha4 : string "    PRESSIONE ENTER PARA TENTAR FUGIR   "
+tela4Linha5 : string "              DA FORCA                  "
+tela4Linha6 : string "                                        "
+tela4Linha7 : string "                 ________               "
+tela4Linha8 : string "                 |      |               "
+tela4Linha9 : string "                 |      O               "
+tela4Linha10: string "                 |     /|l              "
+tela4Linha11: string "                 |     / l              "
+tela4Linha12: string "                 |                      "
+tela4Linha13: string "                 |                      "
+tela4Linha14: string "                 |                      "
+tela4Linha15: string "                 |                      "
+tela4Linha16: string "                 |                      "
+tela4Linha17: string "                 |                      "
+tela4Linha18: string "                 |                      "
+tela4Linha19: string "                 |                      "
+tela4Linha20: string "             ____|_____                 "
+tela4Linha21: string "                                        "
+tela4Linha22: string "                                        "
+tela4Linha23: string "                                        "
+tela4Linha24: string "                                        "
+tela4Linha25: string "                                        "
+tela4Linha26: string "                                        "
+tela4Linha27: string "                                        "
+tela4Linha28: string "                                        "
+tela4Linha29: string "                                        "
 
-; LOOP
+; Venceu
+tela5Linha0 : string "                                        "
+tela5Linha1 : string "                                        "
+tela5Linha2 : string "            VOCE VENCEU!                "
+tela5Linha3 : string "              PARABENS                  "
+tela5Linha4 : string "                                        "
+tela5Linha5 : string "                 ________               "
+tela5Linha6 : string "                 |      |               "
+tela5Linha7 : string "                 |                      "
+tela5Linha8 : string "                 |                      "
+tela5Linha9 : string "                 |                      "
+tela5Linha10: string "                 |                      "
+tela5Linha11: string "                 |                      "
+tela5Linha12: string "                 |                      "
+tela5Linha13: string "                 |                      "
+tela5Linha14: string "                 |                      "
+tela5Linha15: string "                 |                      "
+tela5Linha16: string "                 |                      "
+tela5Linha17: string "                 |                      "
+tela5Linha18: string "                 |                      "
+tela5Linha19: string "                 |                      "
+tela5Linha20: string "             ____|_____                 "
+tela5Linha21: string "                                        "
+tela5Linha22: string "                                        "
+tela5Linha23: string "                                        "
+tela5Linha24: string "                                        "
+tela5Linha25: string "                                        "
+tela5Linha26: string "                                        "
+tela5Linha27: string "   DESEJA JOGAR NOVAMENTE? <s/n>        "
+tela5Linha28: string "                                        "
+tela5Linha29: string "                                        "
 
-jogo_loop:
-        halt
-        
-printa_forca:
-        nop
-        
-;----------------------------------
-; Impressoes prontas              |
-;----------------------------------
+; Tela Perdeu
+telaFinalPLinha0  : string "                                        "
+telaFinalPLinha1  : string "                                        "
+telaFinalPLinha2  : string "                                        "
+telaFinalPLinha3  : string "             VOCE PERDEU!               "
+telaFinalPLinha4  : string "                                        "
+telaFinalPLinha5  : string "              GAME OVER                 "
+telaFinalPLinha6  : string "                                        "
+telaFinalPLinha7  : string "                                        "
+telaFinalPLinha8  : string "   DESEJA JOGAR NOVAMENTE? <s/n>        "
+telaFinalPLinha9  : string "                                        "
+telaFinalPLinha10 : string "                                        "
+telaFinalPLinha11 : string "                  ____                  "
+telaFinalPLinha12 : string "                 /    l                 "
+telaFinalPLinha13 : string "                |  T T |                "
+telaFinalPLinha14 : string "                |   ^  |                "
+telaFinalPLinha15 : string "                |  ___ |                "
+telaFinalPLinha16 : string "                 l____/                 "
+telaFinalPLinha17 : string "                   | |                  "
+telaFinalPLinha18 : string "                  /| |l                 "
+telaFinalPLinha19 : string "                 / | | l                "
+telaFinalPLinha20 : string "                   | |                  "
+telaFinalPLinha21 : string "                  /   l                 "
+telaFinalPLinha22 : string "                 /     l                "
+telaFinalPLinha23 : string "                                        "
+telaFinalPLinha24 : string "                                        "
+telaFinalPLinha25 : string "                                        "
+telaFinalPLinha26 : string "                                        "
+telaFinalPLinha27 : string "                                        "
+telaFinalPLinha28 : string "                                        "
+telaFinalPLinha29 : string "                                        "
 
-telainicial0: string "        _____                           "
-telainicial1: string "        .    . ____   ____   ____       "
-telainicial2: string "        .    ..  _ . . ___. .  _ .      "
-telainicial3: string "    ..__.    .  ._. . ._.  .  ._. .     "
-telainicial4: string "    .________..____..___  . .____.      "
-telainicial5: string "                   ._____.              "
-telainicial6: string "                ___                     "
-telainicial7: string "             __. _.____                 "
-telainicial8: string "            . __ ..__  .                "
-telainicial9: string "           . ._. . . __ ._              "
-telainicial10:string "           .____ ..____  .              "
-telainicial11:string "                ..     ..               "
-telainicial12:string "  ___________                           "
-telainicial13:string "  ._   _____.__________   ____ _____    "
-telainicial14:string "   .    __..  _ ._  __ ._. ___..__  .   "
-telainicial15:string "   .     ..  ._. .  . ...  .___ . __ ._ "
-telainicial16:string "   .___  . .____..__.    .___  .____  . "
-telainicial17:string "       ..                    ..     ..  "
-telainicial18:string "                                        "
-telainicial19:string "                                        "
-telainicial20:string "                                        "
-telainicial21:string "                                        "
-telainicial22:string "                                        "
-telainicial23:string "            Pressione Espaco            "
-telainicial24:string "              Para iniciar              "
-telainicial25:string "                                        "
-telainicial26:string "                                        "
-telainicial27:string "                                        "
-telainicial28:string "                                        "
-telainicial29:string "                                        "
-
-telaganhou0: string "                                        "
-telaganhou1: string "                                        "
-telaganhou2: string "                                        "
-telaganhou3: string "                                        "
-telaganhou4: string "                                        "
-telaganhou5: string "                                        "
-telaganhou6: string "         _  _   __    ___  ____         "
-telaganhou7: string "        . .. . .  .  . __..  __.        "
-telaganhou8: string "        . .. ..  O .. .__  . _.         "
-telaganhou9: string "         .__.  .__.  .___..____.        "
-telaganhou10:string "    ___   __   __ _  _  _   __   _  _   "
-telaganhou11:string "   . __. . _. .  . .. .. . .  . . .. .  "
-telaganhou12:string "  . ._ ..    ..    .. __ ..  O .. .. .  "
-telaganhou13:string "   .___.._.._.._.__.._.._. .__. .____.  "
-telaganhou14:string "                                        "
-telaganhou15:string "                                        "
-telaganhou16:string "                                        "
-telaganhou17:string "                                        "
-telaganhou18:string "                                        "
-telaganhou19:string "                                        "
-telaganhou20:string "    Pressione Espaco para reiniciar     "
-telaganhou21:string "    Pressione Enter para finalizar      "
-telaganhou22:string "                                        "
-telaganhou23:string "                                        "
-telaganhou24:string "                                        "
-telaganhou25:string "                                        "
-telaganhou26:string "                                        "
-telaganhou27:string "                                        "
-telaganhou28:string "                                        "
-telaganhou29:string "                                        "
- 
-telaperdeu0: string "                                        "
-telaperdeu1: string "                                        "
-telaperdeu2: string "                                        "
-telaperdeu3: string "                                        "
-telaperdeu4: string "                                        "
-telaperdeu5: string "                                        "
-telaperdeu6: string "         _  _   __    ___  ____         "
-telaperdeu7: string "        . .. . .  .  . __..  __.        "
-telaperdeu8: string "        . .. ..  O .. .__  . _.         "
-telaperdeu9: string "         .__.  .__.  .___..____.        "
-telaperdeu10:string "   ____  ____  ____  ____  ____  _  _   "
-telaperdeu11:string "  .  _ ..  __..  _ ..    ..  __.. .. .  "
-telaperdeu12:string "   . __. . _.  .   . . D . . _. . .. .  "
-telaperdeu13:string "  .__.  .____..__._..____..____..____.  "
-telaperdeu14:string "                                        "
-telaperdeu15:string "                                        "
-telaperdeu16:string "                                        "
-telaperdeu17:string "                                        "
-telaperdeu18:string "                                        "
-telaperdeu19:string "                                        "
-telaperdeu20:string "    Pressione Espaco para reiniciar     "
-telaperdeu21:string "    Pressione Enter para finalizar      "
-telaperdeu22:string "                                        "
-telaperdeu23:string "                                        "
-telaperdeu24:string "                                        "
-telaperdeu25:string "                                        "
-telaperdeu26:string "                                        "
-telaperdeu27:string "                                        "
-telaperdeu28:string "                                        "
-telaperdeu29:string "                                        "
- 
- 
-stringA0: string " ___ "
-stringA1: string ".   ."
-stringA2: string ".___."
-stringA3: string ".   ."
- 
-stringB0: string " ___ "
-stringB1: string ".   ."
-stringB2: string ".___."
-stringB3: string ".___."
- 
-stringC0: string " ___ "
-stringC1: string ".    "
-stringC2: string ".    "
-stringC3: string ".___ "
- 
-stringD0: string " __  "
-stringD1: string ".  . "
-stringD2: string ".   ."
-stringD3: string ".__. "
- 
-stringE0: string " ___ "
-stringE1: string ".    "
-stringE2: string ".___ "
-stringE3: string ".___ "
- 
-stringF0: string " ___ "
-stringF1: string ".    "
-stringF2: string ".___ "
-stringF3: string ".    "
- 
-stringG0: string " ___ "
-stringG1: string ".    "
-stringG2: string ". __."
-stringG3: string ".___."
- 
-stringH0: string "     "
-stringH1: string ".   ."
-stringH2: string ".___."
-stringH3: string ".   ."
- 
-stringI0: string "  .. "
-stringI1: string "  .. "
-stringI2: string "  .. "
-stringI3: string "  .. "
- 
-stringJ0: string "    ."
-stringJ1: string "    ."
-stringJ2: string "    ."
-stringJ3: string " .__."
- 
-stringK0: string " . . "
-stringK1: string " ..  "
-stringK2: string " ..  "
-stringK3: string " . . "
- 
-stringL0: string " .   "
-stringL1: string " .   "
-stringL2: string " .   "
-stringL3: string " .___"
- 
-stringM0: string ".. .."
-stringM1: string ". . ."
-stringM2: string ".   ."
-stringM3: string ".   ."
- 
-stringN0: string "..  ."
-stringN1: string ". . ."
-stringN2: string ".  .."
-stringN3: string ".   ."
- 
-stringO0: string "_____"
-stringO1: string ".   ."
-stringO2: string ".   ."
-stringO3: string ".___."
- 
-stringP0: string "_____"
-stringP1: string ".   ."
-stringP2: string ".___."
-stringP3: string ".    "
- 
-stringQ0: string "_____"
-stringQ1: string ".   ."
-stringQ2: string ". . ."
-stringQ3: string ".__.."
- 
-stringR0: string "_____"
-stringR1: string ".   ."
-stringR2: string ".___."
-stringR3: string "..   "
- 
-stringS0: string " ____"
-stringS1: string ".    "
-stringS2: string ".___."
-stringS3: string "____."
- 
-stringT0: string "_____"
-stringT1: string "  .  "
-stringT2: string "  .  "
-stringT3: string "  .  "
- 
-stringU0: string ".   ."
-stringU1: string ".   ."
-stringU2: string ".   ."
-stringU3: string ".___."
- 
-stringV0: string ".   ."
-stringV1: string ".   ."
-stringV2: string ".   ."
-stringV3: string " ._."
- 
-stringW0: string ".   ."
-stringW1: string ".   ."
-stringW2: string ". . ."
-stringW3: string ".. .."
- 
-;stringX0: string " .  ."
-;stringX1: string "  .. "
-;stringX2: string "  .. "
-;stringX3: string " .  ."
- 
-stringY0: string " .  ."
-stringY1: string "  .. "
-stringY2: string "  .. "
-stringY3: string "  .. "
- 
-stringZ0: string "____ "
-stringZ1: string "   . "
-stringZ2: string "  .  "
-stringZ3: string " .___"
- 
- 
-vidas60: string "  __________        "
-vidas61: string "  .        .        "
-vidas62: string "  .                 "
-vidas63: string "  .                 "
-vidas64: string "  .                 "
-vidas65: string "  .                 "
-vidas66: string "  .                 "
-vidas67: string "  .                 "
-vidas68: string "  .                 "
-vidas69: string "  .                 "
-vidas610:string "  .                 "
-vidas611:string "  .                 "
-vidas612:string "  .                 "
-vidas613:string "                    "
-vidas614:string " Vidas restantes:6  " 
- 
-vidas50: string "  __________        "
-vidas51: string "  .        .        "
-vidas52: string "  .       . .       "
-vidas53: string "  .       ._.       "
-vidas54: string "  .                 "
-vidas55: string "  .                 "
-vidas56: string "  .                 "
-vidas57: string "  .                 "
-vidas58: string "  .                 "
-vidas59: string "  .                 "
-vidas510:string "  .                 "
-vidas511:string "  .                 "
-vidas512:string "  .                 "
-vidas513:string "                    "
-vidas514:string " Vidas restantes:5  " 
- 
-vidas40: string "  __________        "
-vidas41: string "  .        .        "
-vidas42: string "  .       . .       "
-vidas43: string "  .       ._.       "
-vidas44: string "  .        .        "
-vidas45: string "  .        .        "
-vidas46: string "  .        .        "
-vidas47: string "  .        .        "
-vidas48: string "  .                 "
-vidas49: string "  .                 "
-vidas410:string "  .                 "
-vidas411:string "  .                 "
-vidas412:string "  .                 "
-vidas413:string "                    "
-vidas414:string " Vidas restantes:4  " 
- 
-vidas30: string "  __________        "
-vidas31: string "  .        .        "
-vidas32: string "  .       . .       "
-vidas33: string "  .       ._.       "
-vidas34: string "  .        .        "
-vidas35: string "  .        .        "
-vidas36: string "  .        .        "
-vidas37: string "  .        .        "
-vidas38: string "  .         .       "
-vidas39: string "  .          .      "
-vidas310:string "  .           .     "
-vidas311:string "  .                 "
-vidas312:string "  .                 "
-vidas313:string "                    "
-vidas314:string " Vidas restantes:3  " 
- 
-vidas20: string "  __________        "
-vidas21: string "  .        .        "
-vidas22: string "  .       . .       "
-vidas23: string "  .       ._.       "
-vidas24: string "  .        .        "
-vidas25: string "  .        .        "
-vidas26: string "  .        .        "
-vidas27: string "  .        .        "
-vidas28: string "  .       . .       "
-vidas29: string "  .      .   .      "
-vidas210:string "  .     .     .     "
-vidas211:string "  .                 "
-vidas212:string "  .                 "
-vidas213:string "                    "
-vidas214:string " Vidas restantes:2  " 
- 
-vidas10: string "  __________        "
-vidas11: string "  .        .        "
-vidas12: string "  .       . .       "
-vidas13: string "  .       ._.       "
-vidas14: string "  .        .        "
-vidas15: string "  .        ._____   "
-vidas16: string "  .        .        "
-vidas17: string "  .        .        "
-vidas18: string "  .       . .       "
-vidas19: string "  .      .   .      "
-vidas110:string "  .     .     .     "
-vidas111:string "  .                 "
-vidas112:string "  .                 "
-vidas113:string "                    "
-vidas113:string " Vidas restantes:1  " 
- 
-vidas00: string "  __________        "
-vidas01: string "  .        .        "
-vidas02: string "  .       . .       "
-vidas03: string "  .       ._.       "
-vidas04: string "  .        .        "
-vidas05: string "  .   _____._____   "
-vidas06: string "  .        .        "
-vidas07: string "  .        .        "
-vidas08: string "  .       . .       "
-vidas09: string "  .      .   .      "
-vidas010:string "  .     .     .     "
-vidas011:string "  .                 "
-vidas012:string "  .                 "
-vidas013:string "                    "
-vidas014:string " Vidas restantes:0  "
+tela_l00 : string "========================================"
+tela_l01 : string "=       _____                          ="
+tela_l02 : string "=       |    | ____   ____   ____      ="
+tela_l03 : string "=       |    ||  _ | | ___| |  _ |     ="
+tela_l04 : string "=   ..__|    || |_| | |_.  |  |_| |    ="
+tela_l05 : string "=   |________||____|.___  | |____|     ="
+tela_l06 : string "=                  |_____|             ="
+tela_l07 : string "=               ___                    ="
+tela_l08 : string "=            __| _|____                ="
+tela_l09 : string "=           | __ ||__  |               ="
+tela_l10 : string "=          | |_| | | __ |_             ="
+tela_l11 : string "=          |____ |.____  |             ="
+tela_l12 : string "=               ||     ||              ="
+tela_l13 : string "= ___________                          ="
+tela_l14 : string "= |_   _____|__________   ____ _____   ="
+tela_l15 : string "=  |    ___|  _ |_  __ |_| ___||__  |  ="
+tela_l16 : string "=  |     ||  |_| |  | |||  |___ | __ |_="
+tela_l17 : string "=  |___  | |____||__|    |___  |____  |="
+tela_l18 : string "=      ||                    ||     || ="
+tela_l19 : string "=                                      ="
+tela_l20 : string "=                                      ="
+tela_l21 : string "=                                      ="
+tela_l22 : string "=                                      ="
+tela_l23 : string "=           Pressione Espaco           ="
+tela_l24 : string "=             Para iniciar             ="
+tela_l25 : string "=                                      ="
+tela_l26 : string "=                                      ="
+tela_l27 : string "=                                      ="
+tela_l28 : string "=                                      ="
+tela_l29 : string "========================================"
