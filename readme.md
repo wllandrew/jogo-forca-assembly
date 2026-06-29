@@ -25,4 +25,4 @@ Caso o sublime peça para ser atualizado, não o atualize. Dentro do montador, c
 
 ### Video demonstrativo
 
-- Em desenvolvimento.
+- [Pode ser visto nesse link.](https://youtu.be/i1B8aNNWIL0)
