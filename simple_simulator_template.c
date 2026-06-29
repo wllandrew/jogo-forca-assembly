@@ -65,7 +65,7 @@ Do todos os comandos...
 #define LOADI 60  // "111100"; -- LOAD Rx Ry   -- Rx <- M[Ry]	Format: < inst(6) | Rx(3) | Ry(3) | xxxx >
 #define STOREI 61 // "111101"; -- STORE Rx Ry  -- M[Rx] <- Ry	Format: < inst(6) | Rx(3) | Ry(3) | xxxx >
 #define MOV	51        // "110011"; -- MOV Rx Ry    -- Rx <- Ry	  	Format: < inst(6) | Rx(3) | Ry(3) | xxxx >
-
+#define SWAP 7
 
 // I/O Instructions:
 #define OUTCHAR	50  // "110010"; -- OUTCHAR Rx Ry -- Video[Ry] <- Char(Rx)								Format: < inst(6) | Rx(3) | Ry(3) | xxxx >
@@ -98,7 +98,6 @@ Do todos os comandos...
 #define RTS	4       // "000100"; -- RTS        -- SP++ | PC <- M[SP] | b6=Rx/FR: 1/0	  							Format: < inst(6) | xxxxxxxxxx >
 #define PUSH 5      // "000101"; -- PUSH Rx / PUSH FR  -- M[SP] <- Rx / M[SP] <- FR | SP-- 	  			  : b6=Rx/FR: 0/1		Format: < inst(6) | Rx(3) | b6 | xxxxxx >
 #define POP	6       // "000110"; -- POP Rx  / POP FR   -- SP++ | Rx <- M[SP]  / FR <- M[SP]	  			  : b6=Rx/FR: 0/1		Format: < inst(6) | Rx(3) | b6 | xxxxxx >
-
 
 // Control Instructions:
 #define NOP	0       // "000000"; -- NOP            -- Do Nothing	 						Format: < inst(6) | xxxxxxxxxx >
@@ -554,7 +553,7 @@ loop:
 					}
 					
 					// -----------------------------
-					break;
+					break;	
 
 				case PUSH:
 					selM1 = sSP;
@@ -600,6 +599,14 @@ loop:
 					key = getchar(); 
 					// -----------------------------
 					state=STATE_FETCH;
+					break;
+
+				case SWAP:
+					selM3 = ry;
+					selM5 = sM3;
+					selM1 = sSP;
+					RW = 1;
+					state=STATE_EXECUTE;
 					break;
 
 				default:
@@ -665,6 +672,13 @@ loop:
 					state=STATE_FETCH;
 					break;
 
+				case SWAP:
+					selM4 = rx;
+					selM2 = sM4;
+					LoadReg[ry] = 1;
+					state=STATE_EXECUTE2;
+					break;
+
 			}
 			break;
 
@@ -676,6 +690,15 @@ loop:
 				//PC++;
 				IncPC = 1;
 				// -----------------------------
+				state=STATE_FETCH;
+				break;
+
+			case SWAP:
+				selM1 = sSP;
+				RW = 0;
+				selM2 = sDATA_OUT;
+				LoadReg[rx] = ry;
+
 				state=STATE_FETCH;
 				break;
 			}
